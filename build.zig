@@ -8,17 +8,24 @@ pub fn build(b: *std.Build) void {
     const scanner = Scanner.create(b, .{});
     const wayland = b.createModule(.{ .root_source_file = scanner.result });
 
+    scanner.addSystemProtocol("stable/xdg-shell/xdg-shell.xml");
     scanner.addCustomProtocol(b.path("protocol/wlr-layer-shell-unstable-v1.xml"));
 
-    const z2d = b.dependency("z2d", .{
-        .target = target,
-        .optimize = optimize,
-    }).module("z2d");
+    scanner.generate("wl_compositor", 1);
+    scanner.generate("wl_shm", 1);
+    scanner.generate("wl_output", 4);
+    scanner.generate("xdg_wm_base", 3);
+    scanner.generate("zwlr_layer_shell_v1", 5);
 
-    const goose = b.dependency("goose", .{
-        .target = target,
-        .optimize = optimize,
-    }).module("goose");
+    // const z2d = b.dependency("z2d", .{
+    //     .target = target,
+    //     .optimize = optimize,
+    // }).module("z2d");
+
+    // const goose = b.dependency("goose", .{
+    //     .target = target,
+    //     .optimize = optimize,
+    // }).module("goose");
 
     const exe = b.addExecutable(.{
         .name = "quackshell",
@@ -28,9 +35,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .link_libc = true,
             .imports = &.{
-                .{ .name = "z2d", .module = z2d },
                 .{ .name = "wayland", .module = wayland },
-                .{ .name = "goose", .module = goose },
+                // .{ .name = "z2d", .module = z2d },
+                // .{ .name = "goose", .module = goose },
             },
         }),
     });
