@@ -17,10 +17,10 @@ pub fn build(b: *std.Build) void {
     scanner.generate("xdg_wm_base", 3);
     scanner.generate("zwlr_layer_shell_v1", 5);
 
-    // const z2d = b.dependency("z2d", .{
-    //     .target = target,
-    //     .optimize = optimize,
-    // }).module("z2d");
+    const z2d = b.dependency("z2d", .{
+        .target = target,
+        .optimize = optimize,
+    }).module("z2d");
 
     // const goose = b.dependency("goose", .{
     //     .target = target,
@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) void {
             .link_libc = true,
             .imports = &.{
                 .{ .name = "wayland", .module = wayland },
-                // .{ .name = "z2d", .module = z2d },
+                .{ .name = "z2d", .module = z2d },
                 // .{ .name = "goose", .module = goose },
             },
         }),

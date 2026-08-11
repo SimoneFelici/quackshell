@@ -1,13 +1,13 @@
 const std = @import("std");
 const mem = std.mem;
 const posix = std.posix;
+const z2d = @import("z2d");
 
 const wayland = @import("wayland");
 const wl = wayland.client.wl;
 const zwlr = wayland.client.zwlr;
 
-const W = 300;
-const H = 300;
+const BAR_HEIGHT = 32;
 
 const Globals = struct {
     shm: ?*wl.Shm = null,
@@ -16,18 +16,19 @@ const Globals = struct {
 };
 
 const State = struct {
-    configured: bool,
-    running: bool,
+    configured: bool = false,
+    running: bool = true,
+    width: u32 = 0,
+    height: u32 = 0,
 };
 
-pub fn main() anyerror!void {
+pub fn main(init: std.process.Init) anyerror!void {
     const display = try wl.Display.connect(null);
     defer display.disconnect();
     const registry = try display.getRegistry();
     defer registry.destroy();
 
     var globals = Globals{};
-
     registry.setListener(*Globals, registryListener, &globals);
     if (display.roundtrip() != .SUCCESS) return error.RoundtripFailed;
 
@@ -38,9 +39,26 @@ pub fn main() anyerror!void {
     const layer_shell = globals.layer_shell orelse return error.NoLayerShell;
     defer layer_shell.destroy();
 
+    const surface = try compositor.createSurface();
+    defer surface.destroy();
+    const layer_surface = try layer_shell.getLayerSurface(surface, null, .top, "quackshell");
+    defer layer_surface.destroy();
+
+    layer_surface.setSize(0, BAR_HEIGHT);
+    layer_surface.setAnchor(.{ .top = true, .left = true, .right = true });
+    layer_surface.setExclusiveZone(BAR_HEIGHT);
+
+    var state = State{};
+    layer_surface.setListener(*State, layerSurfaceListener, &state);
+
+    surface.commit();
+    while (!state.configured) {
+        if (display.dispatch() != .SUCCESS) return error.DispatchFailed;
+    }
+
     const buffer = blk: {
-        const stride = W * 4;
-        const size = stride * H;
+        const stride = state.width * 4;
+        const size = stride * state.height;
 
         const fd = try posix.memfd_create("quackshell", 0);
         if (posix.errno(posix.system.ftruncate(fd, size)) != .SUCCESS) return error.FtruncateFailed;
@@ -52,34 +70,34 @@ pub fn main() anyerror!void {
             fd,
             0,
         );
-        @memset(data, 0xff);
 
-        const pool = try shm.createPool(fd, size);
+        const pixels = mem.bytesAsSlice(z2d.pixel.ARGB, data);
+
+        var sfc = z2d.Surface.initBuffer(.image_surface_argb, null, pixels, @intCast(state.width), @intCast(state.height));
+
+        var ctx = z2d.Context.init(init.io, init.gpa, &sfc);
+        defer ctx.deinit();
+
+        ctx.setSourceToPixel(.{ .argb = .{ .r = 0x00, .g = 0x00, .b = 0x99, .a = 0x99 } });
+        try ctx.moveTo(0, 0);
+        try ctx.lineTo(@floatFromInt(state.width), 0);
+        try ctx.lineTo(@floatFromInt(state.width), @floatFromInt(state.height));
+        try ctx.lineTo(0, @floatFromInt(state.height));
+        try ctx.closePath();
+        try ctx.fill();
+
+        const pool = try shm.createPool(fd, @intCast(size));
         defer pool.destroy();
 
-        break :blk try pool.createBuffer(0, W, H, stride, wl.Shm.Format.argb8888);
+        break :blk try pool.createBuffer(
+            0,
+            @intCast(state.width),
+            @intCast(state.height),
+            @intCast(stride),
+            wl.Shm.Format.argb8888,
+        );
     };
     defer buffer.destroy();
-
-    const surface = try compositor.createSurface();
-    defer surface.destroy();
-    const layer_surface = try layer_shell.getLayerSurface(surface, null, .top, "quackshell");
-    defer layer_surface.destroy();
-
-    layer_surface.setSize(W, H);
-    layer_surface.setAnchor(.{ .top = true, .left = true });
-
-    var state: State = .{
-        .configured = false,
-        .running = true,
-    };
-
-    layer_surface.setListener(*State, layerSurfaceListener, &state);
-
-    surface.commit();
-    while (!state.configured) {
-        if (display.dispatch() != .SUCCESS) return error.DispatchFailed;
-    }
 
     surface.attach(buffer, 0, 0);
     surface.commit();
@@ -108,6 +126,8 @@ fn layerSurfaceListener(ls: *zwlr.LayerSurfaceV1, event: zwlr.LayerSurfaceV1.Eve
     switch (event) {
         .configure => |configure| {
             ls.ackConfigure(configure.serial);
+            state.width = configure.width;
+            state.height = configure.height;
             state.configured = true;
         },
         .closed => state.running = false,
