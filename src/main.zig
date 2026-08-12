@@ -2,18 +2,12 @@ const std = @import("std");
 const mem = std.mem;
 const posix = std.posix;
 const z2d = @import("z2d");
+const Context = @import("context.zig");
+const Wayland = @import("wayland.zig");
 
 const wayland = @import("wayland");
 const wl = wayland.client.wl;
 const zwlr = wayland.client.zwlr;
-
-const BAR_HEIGHT = 32;
-
-const Globals = struct {
-    shm: ?*wl.Shm = null,
-    compositor: ?*wl.Compositor = null,
-    layer_shell: ?*zwlr.LayerShellV1 = null,
-};
 
 const State = struct {
     configured: bool = false,
@@ -23,17 +17,17 @@ const State = struct {
 };
 
 pub fn main(init: std.process.Init) anyerror!void {
+    const ctx = try Context.init(init);
     // Connect to compositor
-    // nulll = "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+    // null = "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
     const display = try wl.Display.connect(null);
     defer display.disconnect();
 
     const registry = try display.getRegistry();
     defer registry.destroy();
 
-    var globals = Globals{};
-
-    registry.setListener(*Globals, registryListener, &globals);
+    var globals = Wayland.Globals{};
+    registry.setListener(*Wayland.Globals, Wayland.registryListener, &globals);
     if (display.roundtrip() != .SUCCESS) return error.RoundtripFailed;
 
     const shm = globals.shm orelse return error.NoWlShm;
@@ -47,12 +41,12 @@ pub fn main(init: std.process.Init) anyerror!void {
     const layer_surface = try layer_shell.getLayerSurface(surface, null, .top, "quackshell");
     defer layer_surface.destroy();
 
-    layer_surface.setSize(0, BAR_HEIGHT);
+    layer_surface.setSize(0, ctx.config.bar_height);
     // layer_surface.setSize(BAR_HEIGHT, 0);
     layer_surface.setAnchor(.{ .top = true, .left = true, .right = true });
     // layer_surface.setAnchor(.{ .bottom = true, .left = true, .right = true });
     // layer_surface.setAnchor(.{ .left = true, .top = true, .bottom = true });
-    layer_surface.setExclusiveZone(BAR_HEIGHT);
+    layer_surface.setExclusiveZone(@intCast(ctx.config.bar_height));
 
     var state = State{};
     layer_surface.setListener(*State, layerSurfaceListener, &state);
@@ -81,16 +75,16 @@ pub fn main(init: std.process.Init) anyerror!void {
         const pixels = mem.bytesAsSlice(z2d.pixel.ARGB, data);
 
         var sfc = z2d.Surface.initBuffer(.image_surface_argb, null, pixels, @intCast(state.width), @intCast(state.height));
-        var ctx = z2d.Context.init(init.io, init.gpa, &sfc);
-        defer ctx.deinit();
-        ctx.setSourceToPixel(.{ .argb = .{ .r = 0x00, .g = 0x00, .b = 0x99, .a = 0x99 } });
+        var ztx = z2d.Context.init(ctx.io, ctx.gpa, &sfc);
+        defer ztx.deinit();
+        ztx.setSourceToPixel(.{ .argb = .{ .r = 0x00, .g = 0x00, .b = 0xff, .a = 0xff } });
 
-        try ctx.moveTo(0, 0);
-        try ctx.lineTo(@floatFromInt(state.width), 0);
-        try ctx.lineTo(@floatFromInt(state.width), @floatFromInt(state.height));
-        try ctx.lineTo(0, @floatFromInt(state.height));
-        try ctx.closePath();
-        try ctx.fill();
+        try ztx.moveTo(0, 0);
+        try ztx.lineTo(@floatFromInt(state.width), 0);
+        try ztx.lineTo(@floatFromInt(state.width), @floatFromInt(state.height));
+        try ztx.lineTo(0, @floatFromInt(state.height));
+        try ztx.closePath();
+        try ztx.fill();
 
         const pool = try shm.createPool(fd, @intCast(size));
         defer pool.destroy();
@@ -112,21 +106,6 @@ pub fn main(init: std.process.Init) anyerror!void {
     // Main loop
     while (state.running) {
         if (display.dispatch() != .SUCCESS) return error.DispatchFailed;
-    }
-}
-
-fn registryListener(registry: *wl.Registry, event: wl.Registry.Event, globals: *Globals) void {
-    switch (event) {
-        .global => |global| {
-            if (mem.orderZ(u8, global.interface, wl.Compositor.interface.name) == .eq) {
-                globals.compositor = registry.bind(global.name, wl.Compositor, 1) catch return;
-            } else if (mem.orderZ(u8, global.interface, wl.Shm.interface.name) == .eq) {
-                globals.shm = registry.bind(global.name, wl.Shm, 1) catch return;
-            } else if (mem.orderZ(u8, global.interface, zwlr.LayerShellV1.interface.name) == .eq) {
-                globals.layer_shell = registry.bind(global.name, zwlr.LayerShellV1, 1) catch return;
-            }
-        },
-        .global_remove => {},
     }
 }
 
