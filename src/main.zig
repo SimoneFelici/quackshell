@@ -23,12 +23,16 @@ const State = struct {
 };
 
 pub fn main(init: std.process.Init) anyerror!void {
+    // Connect to compositor
+    // nulll = "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
     const display = try wl.Display.connect(null);
     defer display.disconnect();
+
     const registry = try display.getRegistry();
     defer registry.destroy();
 
     var globals = Globals{};
+
     registry.setListener(*Globals, registryListener, &globals);
     if (display.roundtrip() != .SUCCESS) return error.RoundtripFailed;
 
@@ -38,19 +42,23 @@ pub fn main(init: std.process.Init) anyerror!void {
     defer compositor.destroy();
     const layer_shell = globals.layer_shell orelse return error.NoLayerShell;
     defer layer_shell.destroy();
-
     const surface = try compositor.createSurface();
     defer surface.destroy();
     const layer_surface = try layer_shell.getLayerSurface(surface, null, .top, "quackshell");
     defer layer_surface.destroy();
 
     layer_surface.setSize(0, BAR_HEIGHT);
+    // layer_surface.setSize(BAR_HEIGHT, 0);
     layer_surface.setAnchor(.{ .top = true, .left = true, .right = true });
+    // layer_surface.setAnchor(.{ .bottom = true, .left = true, .right = true });
+    // layer_surface.setAnchor(.{ .left = true, .top = true, .bottom = true });
     layer_surface.setExclusiveZone(BAR_HEIGHT);
 
     var state = State{};
     layer_surface.setListener(*State, layerSurfaceListener, &state);
 
+    // Empty request to be seen by the compositor
+    // Then we get info from the listener
     surface.commit();
     while (!state.configured) {
         if (display.dispatch() != .SUCCESS) return error.DispatchFailed;
@@ -70,15 +78,13 @@ pub fn main(init: std.process.Init) anyerror!void {
             fd,
             0,
         );
-
         const pixels = mem.bytesAsSlice(z2d.pixel.ARGB, data);
 
         var sfc = z2d.Surface.initBuffer(.image_surface_argb, null, pixels, @intCast(state.width), @intCast(state.height));
-
         var ctx = z2d.Context.init(init.io, init.gpa, &sfc);
         defer ctx.deinit();
-
         ctx.setSourceToPixel(.{ .argb = .{ .r = 0x00, .g = 0x00, .b = 0x99, .a = 0x99 } });
+
         try ctx.moveTo(0, 0);
         try ctx.lineTo(@floatFromInt(state.width), 0);
         try ctx.lineTo(@floatFromInt(state.width), @floatFromInt(state.height));
@@ -99,9 +105,11 @@ pub fn main(init: std.process.Init) anyerror!void {
     };
     defer buffer.destroy();
 
+    // Print buffer to monitor
     surface.attach(buffer, 0, 0);
     surface.commit();
 
+    // Main loop
     while (state.running) {
         if (display.dispatch() != .SUCCESS) return error.DispatchFailed;
     }
