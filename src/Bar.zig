@@ -3,6 +3,7 @@ const mem = std.mem;
 const posix = std.posix;
 const z2d = @import("z2d");
 const Context = @import("Context.zig");
+const Config = @import("Config.zig");
 
 const wayland = @import("wayland");
 const wl = wayland.client.wl;
@@ -86,7 +87,7 @@ fn createBuffer(bar: *Bar, ctx: Context, shm: *wl.Shm) !*wl.Buffer {
     var sfc = z2d.Surface.initBuffer(.image_surface_argb, null, pixels, @intCast(bar.width), @intCast(bar.height));
     var ztx = z2d.Context.init(ctx.io, ctx.gpa, &sfc);
     defer ztx.deinit();
-    ztx.setSourceToPixel(.{ .argb = .{ .r = 0x00, .g = 0x00, .b = 0xff, .a = 0xff } });
+    ztx.setSourceToPixel(.{ .argb = toPixel(ctx.config.bg) });
 
     try ztx.moveTo(0, 0);
     try ztx.lineTo(@floatFromInt(bar.width), 0);
@@ -117,4 +118,8 @@ fn layerSurfaceListener(ls: *zwlr.LayerSurfaceV1, event: zwlr.LayerSurfaceV1.Eve
         },
         .closed => bar.running = false,
     }
+}
+
+fn toPixel(c: Config.Color) z2d.pixel.ARGB {
+    return (z2d.pixel.ARGB{ .r = c.r, .g = c.g, .b = c.b, .a = c.a }).multiply();
 }
