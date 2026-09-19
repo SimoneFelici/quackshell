@@ -40,6 +40,7 @@ pub fn build(b: *std.Build) void {
                 // .{ .name = "goose", .module = goose },
             },
         }),
+        .use_llvm = true,
     });
     exe.root_module.linkSystemLibrary("wayland-client", .{});
 

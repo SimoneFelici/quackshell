@@ -1,5 +1,5 @@
 const std = @import("std");
-const Config = @import("config.zig");
+const Config = @import("Config.zig");
 
 const Context = @This();
 
