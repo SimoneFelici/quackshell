@@ -2,19 +2,24 @@
     .name = .quackshell,
     .version = "0.0.0",
     .fingerprint = 0x7a94c6eb2796a2d,
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.1",
     .dependencies = .{
         .wayland = .{
-            .url = "git+https://codeberg.org/ifreund/zig-wayland?ref=main#23839e41161de025d71ce082561ecba1c5331281",
-            .hash = "wayland-0.7.0-dev-lQa1kl38AQC-kQolS5D4jV1GJ2rH2jv1VWHr14YLVnyn",
+            .url = "git+https://codeberg.org/ifreund/zig-wayland?ref=main#94db7ba4e0a6b4780a16dbc74c7a2c88f1ebf502",
+            .hash = "wayland-0.8.0-dev-lQa1kuf8AQCeoam8G-XPyaIYvIOk3_wgsspwi4nT_L5q",
         },
         .z2d = .{
-            .url = "git+https://github.com/vancluever/z2d?ref=main#6c4f0cac447ce3c96d4198757c514817d729b5dd",
-            .hash = "z2d-0.12.2-pre-j5P_HiVBEQA0HKjyLJpIUMKN5zHSa9-OjvS4qUCuZHJd",
+            .url = "git+https://github.com/vancluever/z2d?ref=main#e5be7af44ca957173759506726c5794b7cc180d4",
+            .hash = "z2d-0.14.0-j5P_Hl9EFADgBruemiQXUyIW9jvWuKxJOYl3nwpvcvez",
         },
         .goose = .{
-            .url = "git+https://github.com/luxluth/goose?ref=master#6e91762f8f0244295eff62071e37b7460bfc41ae",
-            .hash = "goose-2.0.0-e9MzMMUaAwDs4vGzB15VSOtkL_7tmfcfN8GoEiVbUbVZ",
+            .url = "git+https://github.com/luxluth/goose.git?ref=master#d97a2cd849f8bfd9f07ad00fca896b677cc6ec50",
+            .hash = "goose-4.0.2-e9MzML9aBAAoACxMDD71qNLxfKFSWSNWg6wON_ODDnyR",
+            .lazy = true,
+        },
+        .@"wlr-protocols" = .{
+            .url = "git+https://gitlab.freedesktop.org/wlroots/wlr-protocols?ref=master#1106a4a1c57562ddd438c547da4c0d6dc150d624",
+            .hash = "N-V-__8AAMu4AQDm8emc7YzJVZYBrDgPferIyxOTVf3F4ypQ",
         },
     },
     .paths = .{

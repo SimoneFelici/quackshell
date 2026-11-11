@@ -5,15 +5,18 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // Wayland
     const scanner = Scanner.create(b, .{});
     const wayland = b.createModule(.{ .root_source_file = scanner.result });
+    const wlr_protocols = b.dependency("wlr-protocols", .{});
 
     scanner.addSystemProtocol("stable/xdg-shell/xdg-shell.xml");
-    scanner.addCustomProtocol(b.path("protocol/wlr-layer-shell-unstable-v1.xml"));
+    scanner.addCustomProtocol(wlr_protocols.path("unstable/wlr-layer-shell-unstable-v1.xml"));
+    scanner.addCustomProtocol(wlr_protocols.path("unstable/wlr-foreign-toplevel-management-unstable-v1.xml"));
 
-    scanner.generate("wl_compositor", 1);
-    scanner.generate("wl_shm", 1);
+    scanner.generate("wl_compositor", 7);
     scanner.generate("wl_output", 4);
+    scanner.generate("wl_shm", 3);
     scanner.generate("xdg_wm_base", 3);
     scanner.generate("zwlr_layer_shell_v1", 5);
 
@@ -50,10 +53,6 @@ pub fn build(b: *std.Build) void {
 
     const run_cmd = b.addRunArtifact(exe);
     run_step.dependOn(&run_cmd.step);
-
     run_cmd.step.dependOn(b.getInstallStep());
-
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
+    run_cmd.addPassthruArgs();
 }
