@@ -1,27 +1,14 @@
 const std = @import("std");
-const mem = std.mem;
 const posix = std.posix;
 
 const wayland = @import("wayland");
 const wl = wayland.client.wl;
-const zwlr = wayland.client.zwlr;
 
 const z2d = @import("z2d");
 
 const Context = @import("Context.zig");
-
-const Globals = struct {
-    compositor: ?*wl.Compositor = null,
-    shm: ?*wl.Shm = null,
-    layer_shell: ?*zwlr.LayerShellV1 = null,
-};
-
-const State = struct {
-    configured: bool = false,
-    closed: bool = false,
-    width: u32 = 0,
-    height: u32 = 0,
-};
+const draw = @import("draw.zig");
+const listeners = @import("listeners.zig");
 
 pub fn main(init: std.process.Init) !void {
     const ctx = Context.init(init, .{});
@@ -30,8 +17,8 @@ pub fn main(init: std.process.Init) !void {
     defer display.disconnect();
 
     const registry = try display.getRegistry();
-    var globals: Globals = .{};
-    registry.setListener(*Globals, registryListener, &globals);
+    var globals: listeners.Globals = .{};
+    registry.setListener(*listeners.Globals, listeners.registryListener, &globals);
     if (display.roundtrip() != .SUCCESS) return error.RoundtripFailed;
 
     const compositor = globals.compositor orelse return error.NoWlCompositor;
@@ -47,8 +34,8 @@ pub fn main(init: std.process.Init) !void {
     });
     layer_surface.setExclusiveZone(@intCast(ctx.config.height));
 
-    var state: State = .{};
-    layer_surface.setListener(*State, layerSurfaceListener, &state);
+    var state: listeners.State = .{};
+    layer_surface.setListener(*listeners.State, listeners.layerSurfaceListener, &state);
 
     // Empty request to be seen by the compositor
     // Then we get info from the listener
@@ -77,61 +64,10 @@ fn createBuffer(ctx: Context, shm: *wl.Shm, width: u32, height: u32) !*wl.Buffer
     if (posix.errno(posix.system.ftruncate(fd, len)) != .SUCCESS) return error.FtruncateFailed;
     const data = try posix.mmap(null, len, .{ .READ = true, .WRITE = true }, .{ .TYPE = .SHARED }, fd, 0);
 
-    const pixels = mem.bytesAsSlice(z2d.pixel.ARGB, data);
-    var sfc = z2d.Surface.initBuffer(.image_surface_argb, null, pixels, @intCast(width), @intCast(height));
-    var ztx = z2d.Context.init(ctx.io, ctx.gpa, &sfc);
-    defer ztx.deinit();
-
-    ztx.setSourceToPixel(.{ .argb = ctx.config.background.multiply() });
-
-    const r: f64 = @floatFromInt(ctx.config.rounding);
-    const left: f64 = @floatFromInt(ctx.config.gaps);
-    const right: f64 = @floatFromInt(width - ctx.config.gaps);
-    const bottom: f64 = @floatFromInt(height);
-    const pi = std.math.pi;
-
-    try ztx.moveTo(left + r, 0);
-    try ztx.lineTo(right - r, 0);
-    try ztx.arc(right - r, r, r, -pi / 2.0, 0);
-    try ztx.lineTo(right, bottom - r);
-    try ztx.arc(right - r, bottom - r, r, 0, pi / 2.0);
-    try ztx.lineTo(left + r, bottom);
-    try ztx.arc(left + r, bottom - r, r, pi / 2.0, pi);
-    try ztx.lineTo(left, r);
-    try ztx.arc(left + r, r, r, pi, 3.0 * pi / 2.0);
-    try ztx.closePath();
-    try ztx.fill();
+    const pixels = std.mem.bytesAsSlice(z2d.pixel.ARGB, data);
+    try draw.bar(ctx, pixels, width, height);
 
     const pool = try shm.createPool(fd, @intCast(len));
     defer pool.destroy();
     return try pool.createBuffer(0, @intCast(width), @intCast(height), @intCast(stride), .argb8888);
-}
-
-// Wayland listeners
-
-fn registryListener(registry: *wl.Registry, event: wl.Registry.Event, globals: *Globals) void {
-    switch (event) {
-        .global => |global| {
-            if (mem.orderZ(u8, global.interface, wl.Compositor.interface.name) == .eq) {
-                globals.compositor = registry.bind(global.name, wl.Compositor, @min(global.version, 4)) catch return;
-            } else if (mem.orderZ(u8, global.interface, wl.Shm.interface.name) == .eq) {
-                globals.shm = registry.bind(global.name, wl.Shm, 1) catch return;
-            } else if (mem.orderZ(u8, global.interface, zwlr.LayerShellV1.interface.name) == .eq) {
-                globals.layer_shell = registry.bind(global.name, zwlr.LayerShellV1, @min(global.version, 4)) catch return;
-            }
-        },
-        .global_remove => {},
-    }
-}
-
-fn layerSurfaceListener(layer_surface: *zwlr.LayerSurfaceV1, event: zwlr.LayerSurfaceV1.Event, state: *State) void {
-    switch (event) {
-        .configure => |ev| {
-            layer_surface.ackConfigure(ev.serial);
-            state.width = ev.width;
-            state.height = ev.height;
-            state.configured = true;
-        },
-        .closed => state.closed = true,
-    }
 }
