@@ -8,15 +8,7 @@ const zwlr = wayland.client.zwlr;
 
 const z2d = @import("z2d");
 
-const Config = struct {
-    height: u32 = 30,
-    background: z2d.pixel.ARGB = .{ .a = 255, .r = 0, .g = 0, .b = 255 },
-    position: Position = .bottom,
-    gaps: u32 = 5,
-    rounding: u32 = 3,
-
-    const Position = enum { top, bottom };
-};
+const Context = @import("Context.zig");
 
 const Globals = struct {
     compositor: ?*wl.Compositor = null,
@@ -32,7 +24,7 @@ const State = struct {
 };
 
 pub fn main(init: std.process.Init) !void {
-    const config: Config = .{};
+    const ctx = Context.init(init, .{});
 
     const display = try wl.Display.connect(null);
     defer display.disconnect();
@@ -48,12 +40,12 @@ pub fn main(init: std.process.Init) !void {
 
     const surface = try compositor.createSurface();
     const layer_surface = try layer_shell.getLayerSurface(surface, null, .top, "quackshell");
-    layer_surface.setSize(0, config.height);
-    layer_surface.setAnchor(switch (config.position) {
+    layer_surface.setSize(0, ctx.config.height);
+    layer_surface.setAnchor(switch (ctx.config.position) {
         .top => .{ .top = true, .left = true, .right = true },
         .bottom => .{ .bottom = true, .left = true, .right = true },
     });
-    layer_surface.setExclusiveZone(@intCast(config.height));
+    layer_surface.setExclusiveZone(@intCast(ctx.config.height));
 
     var state: State = .{};
     layer_surface.setListener(*State, layerSurfaceListener, &state);
@@ -66,7 +58,7 @@ pub fn main(init: std.process.Init) !void {
     }
     if (state.closed) return;
 
-    const buffer = try createBuffer(init.io, init.gpa, shm, config, state.width, state.height);
+    const buffer = try createBuffer(ctx, shm, state.width, state.height);
     surface.attach(buffer, 0, 0);
     surface.damageBuffer(0, 0, @intCast(state.width), @intCast(state.height));
     surface.commit();
@@ -77,7 +69,7 @@ pub fn main(init: std.process.Init) !void {
 }
 
 /// Wayland buffer
-fn createBuffer(io: std.Io, gpa: mem.Allocator, shm: *wl.Shm, config: Config, width: u32, height: u32) !*wl.Buffer {
+fn createBuffer(ctx: Context, shm: *wl.Shm, width: u32, height: u32) !*wl.Buffer {
     const stride = width * 4;
     const len = stride * height;
 
@@ -87,28 +79,28 @@ fn createBuffer(io: std.Io, gpa: mem.Allocator, shm: *wl.Shm, config: Config, wi
 
     const pixels = mem.bytesAsSlice(z2d.pixel.ARGB, data);
     var sfc = z2d.Surface.initBuffer(.image_surface_argb, null, pixels, @intCast(width), @intCast(height));
-    var ctx = z2d.Context.init(io, gpa, &sfc);
-    defer ctx.deinit();
+    var ztx = z2d.Context.init(ctx.io, ctx.gpa, &sfc);
+    defer ztx.deinit();
 
-    ctx.setSourceToPixel(.{ .argb = config.background.multiply() });
+    ztx.setSourceToPixel(.{ .argb = ctx.config.background.multiply() });
 
-    const r: f64 = @floatFromInt(config.rounding);
-    const left: f64 = @floatFromInt(config.gaps);
-    const right: f64 = @floatFromInt(width - config.gaps);
+    const r: f64 = @floatFromInt(ctx.config.rounding);
+    const left: f64 = @floatFromInt(ctx.config.gaps);
+    const right: f64 = @floatFromInt(width - ctx.config.gaps);
     const bottom: f64 = @floatFromInt(height);
     const pi = std.math.pi;
 
-    try ctx.moveTo(left + r, 0);
-    try ctx.lineTo(right - r, 0);
-    try ctx.arc(right - r, r, r, -pi / 2.0, 0);
-    try ctx.lineTo(right, bottom - r);
-    try ctx.arc(right - r, bottom - r, r, 0, pi / 2.0);
-    try ctx.lineTo(left + r, bottom);
-    try ctx.arc(left + r, bottom - r, r, pi / 2.0, pi);
-    try ctx.lineTo(left, r);
-    try ctx.arc(left + r, r, r, pi, 3.0 * pi / 2.0);
-    try ctx.closePath();
-    try ctx.fill();
+    try ztx.moveTo(left + r, 0);
+    try ztx.lineTo(right - r, 0);
+    try ztx.arc(right - r, r, r, -pi / 2.0, 0);
+    try ztx.lineTo(right, bottom - r);
+    try ztx.arc(right - r, bottom - r, r, 0, pi / 2.0);
+    try ztx.lineTo(left + r, bottom);
+    try ztx.arc(left + r, bottom - r, r, pi / 2.0, pi);
+    try ztx.lineTo(left, r);
+    try ztx.arc(left + r, r, r, pi, 3.0 * pi / 2.0);
+    try ztx.closePath();
+    try ztx.fill();
 
     const pool = try shm.createPool(fd, @intCast(len));
     defer pool.destroy();
