@@ -3,6 +3,7 @@ const posix = std.posix;
 
 const wayland = @import("wayland");
 const wl = wayland.client.wl;
+const zwlr = wayland.client.zwlr;
 
 const z2d = @import("z2d");
 
@@ -13,11 +14,13 @@ const listeners = @import("listeners.zig");
 pub fn main(init: std.process.Init) !void {
     const ctx = Context.init(init, .{});
 
+    // Connect to compositor
+    // null = "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
     const display = try wl.Display.connect(null);
     defer display.disconnect();
 
     const registry = try display.getRegistry();
-    var globals: listeners.Globals = .{};
+    var globals: listeners.Globals = .{ .arena = ctx.arena };
     registry.setListener(*listeners.Globals, listeners.registryListener, &globals);
     if (display.roundtrip() != .SUCCESS) return error.RoundtripFailed;
 
@@ -25,8 +28,24 @@ pub fn main(init: std.process.Init) !void {
     const shm = globals.shm orelse return error.NoWlShm;
     const layer_shell = globals.layer_shell orelse return error.NoLayerShell;
 
+    for (globals.outputs.items) |output| {
+        try createBar(ctx, display, compositor, layer_shell, shm, output);
+    }
+
+    while (display.dispatch() == .SUCCESS) {}
+}
+
+/// Create bar
+fn createBar(
+    ctx: Context,
+    display: *wl.Display,
+    compositor: *wl.Compositor,
+    layer_shell: *zwlr.LayerShellV1,
+    shm: *wl.Shm,
+    output: *wl.Output,
+) !void {
     const surface = try compositor.createSurface();
-    const layer_surface = try layer_shell.getLayerSurface(surface, null, .top, "quackshell");
+    const layer_surface = try layer_shell.getLayerSurface(surface, output, .top, "quackshell");
     layer_surface.setSize(0, ctx.config.height);
     layer_surface.setAnchor(switch (ctx.config.position) {
         .top => .{ .top = true, .left = true, .right = true },
@@ -34,8 +53,9 @@ pub fn main(init: std.process.Init) !void {
     });
     layer_surface.setExclusiveZone(@intCast(ctx.config.height));
 
-    var state: listeners.State = .{};
-    layer_surface.setListener(*listeners.State, listeners.layerSurfaceListener, &state);
+    const state = try ctx.arena.create(listeners.State);
+    state.* = .{};
+    layer_surface.setListener(*listeners.State, listeners.layerSurfaceListener, state);
 
     // Empty request to be seen by the compositor
     // Then we get info from the listener
@@ -49,10 +69,6 @@ pub fn main(init: std.process.Init) !void {
     surface.attach(buffer, 0, 0);
     surface.damageBuffer(0, 0, @intCast(state.width), @intCast(state.height));
     surface.commit();
-
-    while (!state.closed) {
-        if (display.dispatch() != .SUCCESS) return error.DispatchFailed;
-    }
 }
 
 /// Wayland buffer
