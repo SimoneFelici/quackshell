@@ -51,6 +51,7 @@ fn createBar(
         .top => .{ .top = true, .left = true, .right = true },
         .bottom => .{ .bottom = true, .left = true, .right = true },
     });
+    layer_surface.setMargin(0, ctx.config.gaps, 0, ctx.config.gaps);
     layer_surface.setExclusiveZone(@intCast(ctx.config.height));
 
     const state = try ctx.arena.create(listeners.State);
