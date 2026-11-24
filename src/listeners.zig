@@ -12,13 +12,6 @@ pub const Globals = struct {
     outputs: std.ArrayList(*wl.Output) = .empty,
 };
 
-pub const State = struct {
-    configured: bool = false,
-    closed: bool = false,
-    width: u32 = 0,
-    height: u32 = 0,
-};
-
 /// Wayland globals
 pub fn registryListener(registry: *wl.Registry, event: wl.Registry.Event, globals: *Globals) void {
     switch (event) {
@@ -35,18 +28,5 @@ pub fn registryListener(registry: *wl.Registry, event: wl.Registry.Event, global
             }
         },
         .global_remove => {},
-    }
-}
-
-/// Size and surface flags
-pub fn layerSurfaceListener(layer_surface: *zwlr.LayerSurfaceV1, event: zwlr.LayerSurfaceV1.Event, state: *State) void {
-    switch (event) {
-        .configure => |ev| {
-            layer_surface.ackConfigure(ev.serial);
-            state.width = ev.width;
-            state.height = ev.height;
-            state.configured = true;
-        },
-        .closed => state.closed = true,
     }
 }
