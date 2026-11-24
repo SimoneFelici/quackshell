@@ -19,6 +19,7 @@ pub fn build(b: *std.Build) void {
     scanner.generate("wl_shm", 3);
     scanner.generate("xdg_wm_base", 3);
     scanner.generate("zwlr_layer_shell_v1", 5);
+    scanner.generate("zwlr_foreign_toplevel_manager_v1", 3);
 
     const z2d = b.dependency("z2d", .{
         .target = target,

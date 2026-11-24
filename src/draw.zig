@@ -12,9 +12,10 @@ pub fn bar(ctx: Context, pixels: []z2d.pixel.ARGB, width: u32, height: u32) !voi
 
     ztx.setSourceToPixel(.{ .argb = ctx.config.background.multiply() });
 
-    const r: f64 = @floatFromInt(ctx.config.rounding);
     const w: f64 = @floatFromInt(width);
     const h: f64 = @floatFromInt(height);
+    const round: f64 = @floatFromInt(ctx.config.rounding);
+    const r = @min(round, h / 2, w / 2);
     const pi = std.math.pi;
 
     try ztx.moveTo(r, 0);
