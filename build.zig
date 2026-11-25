@@ -26,6 +26,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     }).module("z2d");
 
+    const zeit = b.dependency("zeit", .{
+        .target = target,
+        .optimize = optimize,
+    }).module("zeit");
+
     // const goose = b.dependency("goose", .{
     //     .target = target,
     //     .optimize = optimize,
@@ -41,6 +46,7 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "wayland", .module = wayland },
                 .{ .name = "z2d", .module = z2d },
+                .{ .name = "zeit", .module = zeit },
                 // .{ .name = "goose", .module = goose },
             },
         }),

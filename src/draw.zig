@@ -4,7 +4,7 @@ const z2d = @import("z2d");
 
 const Config = @import("Config.zig");
 const Context = @import("Context.zig");
-const text = @import("modules/text.zig");
+const time = @import("modules/time.zig");
 
 pub fn background(ctx: Context, ztx: *z2d.Context, w: f64, h: f64) !void {
     ztx.setSourceToPixel(.{ .argb = ctx.config.background.multiply() });
@@ -38,21 +38,46 @@ pub fn modules(ctx: Context, ztx: *z2d.Context, w: f64, h: f64) !void {
 }
 
 fn zoneWidth(ctx: Context, zone_modules: []const Config.Module) !f64 {
+    var buf: [64]u8 = undefined;
     var total: f64 = 0;
     for (zone_modules, 0..) |module, i| {
         if (i > 0) total += ctx.config.padding;
-        total += switch (module) {
-            .text => try text.width(ctx),
-        };
+        total += try textWidth(ctx, try content(ctx, module, &buf));
     }
     return total;
 }
 
+/// Left / Center / Right
 fn zone(ctx: Context, ztx: *z2d.Context, zone_modules: []const Config.Module, start: f64, y: f64) !void {
+    var buf: [64]u8 = undefined;
     var x = start;
     for (zone_modules) |module| {
-        x += ctx.config.padding + switch (module) {
-            .text => try text.draw(ctx, ztx, x, y),
-        };
+        x += ctx.config.padding + try drawText(ctx, ztx, try content(ctx, module, &buf), x, y);
     }
+}
+
+/// Return text inside module
+fn content(ctx: Context, module: Config.Module, buf: []u8) ![]const u8 {
+    return switch (module) {
+        .text => ctx.config.text.content,
+        .time => try time.format(ctx, buf),
+    };
+}
+
+fn textWidth(ctx: Context, str: []const u8) !f64 {
+    var shaped = try z2d.text.shape(ctx.gpa, ctx.font, str, 0, 0, .{
+        .mode = .extents_only,
+        .size = ctx.config.font_size,
+    });
+    defer shaped.deinit(ctx.gpa);
+    return shaped.extents().advance;
+}
+
+fn drawText(ctx: Context, ztx: *z2d.Context, str: []const u8, x: f64, y: f64) !f64 {
+    var shaped = try z2d.text.shape(ctx.gpa, ctx.font, str, x, y, .{
+        .size = ctx.config.font_size,
+    });
+    defer shaped.deinit(ctx.gpa);
+    try z2d.painter.fill(ctx.gpa, ztx.surface, &ztx.pattern, shaped.path().nodes.items, .default);
+    return shaped.extents().advance;
 }

@@ -15,11 +15,14 @@
         .goose = .{
             .url = "git+https://github.com/luxluth/goose.git?ref=master#d97a2cd849f8bfd9f07ad00fca896b677cc6ec50",
             .hash = "goose-4.0.2-e9MzML9aBAAoACxMDD71qNLxfKFSWSNWg6wON_ODDnyR",
-            .lazy = true,
         },
         .@"wlr-protocols" = .{
             .url = "git+https://gitlab.freedesktop.org/wlroots/wlr-protocols?ref=master#1106a4a1c57562ddd438c547da4c0d6dc150d624",
             .hash = "N-V-__8AAMu4AQDm8emc7YzJVZYBrDgPferIyxOTVf3F4ypQ",
+        },
+        .zeit = .{
+            .url = "git+https://github.com/rockorager/zeit?ref=main#da336369d4e05f9ea38d86c481f269bc2a435560",
+            .hash = "zeit-0.10.0-5I6bkxS-AgCYLeTbtGwmBxzrIC5w1x3dP75Ob3FlH-SC",
         },
     },
     .paths = .{

@@ -1,5 +1,4 @@
 const std = @import("std");
-const posix = std.posix;
 
 const wayland = @import("wayland");
 const wl = wayland.client.wl;
@@ -7,6 +6,7 @@ const wl = wayland.client.wl;
 const Bar = @import("Bar.zig");
 const Context = @import("Context.zig");
 const listeners = @import("listeners.zig");
+const time = @import("modules/time.zig");
 
 pub fn main(init: std.process.Init) !void {
     const ctx = try Context.init(init, .{});
@@ -31,8 +31,8 @@ pub fn main(init: std.process.Init) !void {
         try bars.append(ctx.arena, bar);
     }
 
-    var fds = [_]posix.pollfd{
-        .{ .fd = display.getFd(), .events = posix.POLL.IN, .revents = 0 },
+    var fds = [_]std.posix.pollfd{
+        .{ .fd = display.getFd(), .events = std.posix.POLL.IN, .revents = 0 },
     };
 
     while (true) {
@@ -46,17 +46,21 @@ pub fn main(init: std.process.Init) !void {
             else => return error.FlushFailed,
         }
 
-        const rc = posix.system.poll(&fds, fds.len, -1);
-        if (posix.errno(rc) != .SUCCESS) {
+        const rc = std.posix.system.poll(&fds, fds.len, time.timeout(ctx));
+        if (std.posix.errno(rc) != .SUCCESS) {
             display.cancelRead();
             continue;
         }
 
-        if (fds[0].revents & posix.POLL.IN != 0) {
+        if (fds[0].revents & std.posix.POLL.IN != 0) {
             if (display.readEvents() != .SUCCESS) return error.ReadFailed;
         } else {
             display.cancelRead();
         }
         if (display.dispatchPending() != .SUCCESS) return error.DispatchFailed;
+
+        if (rc == 0) {
+            for (bars.items) |bar| bar.dirty = true;
+        }
     }
 }
