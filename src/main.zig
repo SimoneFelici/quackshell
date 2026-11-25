@@ -9,7 +9,7 @@ const Context = @import("Context.zig");
 const listeners = @import("listeners.zig");
 
 pub fn main(init: std.process.Init) !void {
-    const ctx = Context.init(init, .{});
+    const ctx = try Context.init(init, .{});
 
     // Connect to compositor
     // null = "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
@@ -46,8 +46,8 @@ pub fn main(init: std.process.Init) !void {
             else => return error.FlushFailed,
         }
 
-        const ret = posix.system.poll(&fds, fds.len, -1);
-        if (posix.errno(ret) != .SUCCESS) {
+        const rc = posix.system.poll(&fds, fds.len, -1);
+        if (posix.errno(rc) != .SUCCESS) {
             display.cancelRead();
             continue;
         }

@@ -54,7 +54,15 @@ pub fn update(bar: *Bar, ctx: Context, shm: *wl.Shm) !void {
     if (bar.buffer == null) try bar.createBuffer(shm);
 
     @memset(std.mem.sliceAsBytes(bar.pixels), 0);
-    try draw.bar(ctx, bar.pixels, bar.width, bar.height);
+
+    var sfc = z2d.Surface.initBuffer(.image_surface_argb, null, bar.pixels, @intCast(bar.width), @intCast(bar.height));
+    var ztx = z2d.Context.init(ctx.io, ctx.gpa, &sfc);
+    defer ztx.deinit();
+
+    const w: f64 = @floatFromInt(bar.width);
+    const h: f64 = @floatFromInt(bar.height);
+    try draw.background(ctx, &ztx, w, h);
+    try draw.modules(ctx, &ztx, w, h);
 
     bar.surface.attach(bar.buffer.?, 0, 0);
     bar.surface.damageBuffer(0, 0, @intCast(bar.width), @intCast(bar.height));
