@@ -35,6 +35,7 @@ pub fn main(init: std.process.Init) !void {
         .{ .fd = display.getFd(), .events = std.posix.POLL.IN, .revents = 0 },
     };
 
+    // Main loop
     while (true) {
         for (bars.items) |bar| try bar.update(ctx, shm);
 
@@ -46,8 +47,8 @@ pub fn main(init: std.process.Init) !void {
             else => return error.FlushFailed,
         }
 
-        const rc = std.posix.system.poll(&fds, fds.len, time.timeout(ctx));
-        if (std.posix.errno(rc) != .SUCCESS) {
+        const ret = std.posix.system.poll(&fds, fds.len, time.timeout(ctx));
+        if (std.posix.errno(ret) != .SUCCESS) {
             display.cancelRead();
             continue;
         }
@@ -59,7 +60,7 @@ pub fn main(init: std.process.Init) !void {
         }
         if (display.dispatchPending() != .SUCCESS) return error.DispatchFailed;
 
-        if (rc == 0) {
+        if (ret == 0) {
             for (bars.items) |bar| bar.dirty = true;
         }
     }

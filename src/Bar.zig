@@ -89,7 +89,7 @@ fn createBuffer(bar: *Bar, shm: *wl.Shm) !void {
     bar.pixels = std.mem.bytesAsSlice(z2d.pixel.ARGB, data);
 }
 
-/// When not in use sets busy
+/// When not in use sets busy to false
 fn bufferListener(_: *wl.Buffer, event: wl.Buffer.Event, bar: *Bar) void {
     switch (event) {
         .release => bar.busy = false,

@@ -11,6 +11,7 @@ pub fn format(ctx: Context, buf: []u8) ![]const u8 {
     return writer.buffered();
 }
 
+/// Time to wait since next refresh
 pub fn timeout(ctx: Context) i32 {
     const fmt = ctx.config.time.format;
     const seconds = std.mem.indexOf(u8, fmt, "%S") != null or std.mem.indexOf(u8, fmt, "%T") != null;

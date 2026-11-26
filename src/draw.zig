@@ -56,7 +56,7 @@ fn zone(ctx: Context, ztx: *z2d.Context, zone_modules: []const Config.Module, st
     }
 }
 
-/// Return text inside module
+/// Return text inside the module
 fn content(ctx: Context, module: Config.Module, buf: []u8) ![]const u8 {
     return switch (module) {
         .text => ctx.config.text.content,
