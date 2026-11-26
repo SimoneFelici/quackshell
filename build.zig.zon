@@ -9,8 +9,8 @@
             .hash = "wayland-0.8.0-dev-lQa1kuf8AQCeoam8G-XPyaIYvIOk3_wgsspwi4nT_L5q",
         },
         .z2d = .{
-            .url = "git+https://github.com/vancluever/z2d?ref=main#e5be7af44ca957173759506726c5794b7cc180d4",
-            .hash = "z2d-0.14.0-j5P_Hl9EFADgBruemiQXUyIW9jvWuKxJOYl3nwpvcvez",
+            .url = "git+https://github.com/vancluever/z2d?ref=main#4249817f60a3a28a37bfba39b3a2603a17f65409",
+            .hash = "z2d-0.14.0-j5P_HrqpFADgE6Co-ehCg8K6PjPRlTKvRxyMdfUE2qkD",
         },
         .goose = .{
             .url = "git+https://github.com/luxluth/goose.git?ref=master#d97a2cd849f8bfd9f07ad00fca896b677cc6ec50",

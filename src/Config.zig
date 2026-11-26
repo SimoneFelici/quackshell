@@ -14,19 +14,14 @@ font_size: f64 = 16,
 foreground: z2d.pixel.ARGB = .{ .a = 255, .r = 255, .g = 255, .b = 255 },
 padding: f64 = 10,
 
-left: []const Module = &.{.text},
+left: []const Module = &.{.window_title},
 center: []const Module = &.{.time},
 right: []const Module = &.{},
 
-text: Text = .{},
 time: Time = .{},
 
 pub const Position = enum { top, bottom };
-pub const Module = enum { text, time };
-
-pub const Text = struct {
-    content: []const u8 = "󰈸 quackshell 󰈸",
-};
+pub const Module = enum { time, window_title };
 
 pub const Time = struct {
     format: []const u8 = "%d %b %Y %H:%M:%S",

@@ -4,9 +4,16 @@ const zeit = @import("zeit");
 
 const Context = @import("../Context.zig");
 
-pub fn format(ctx: Context, buf: []u8) ![]const u8 {
-    const now = zeit.instant(.{ .now = ctx.io }, &ctx.timezone);
-    var writer = std.Io.Writer.fixed(buf);
+var timezone: zeit.TimeZone = undefined;
+var buf: [64]u8 = undefined;
+
+pub fn init(ctx: Context) !void {
+    timezone = try zeit.local(ctx.arena, ctx.io, .{});
+}
+
+pub fn content(ctx: Context) ![]const u8 {
+    const now = zeit.instant(.{ .now = ctx.io }, &timezone);
+    var writer = std.Io.Writer.fixed(&buf);
     try now.time().strftime(&writer, ctx.config.time.format);
     return writer.buffered();
 }

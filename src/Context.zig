@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const z2d = @import("z2d");
-const zeit = @import("zeit");
 
 const Config = @import("Config.zig");
 
@@ -12,7 +11,6 @@ gpa: std.mem.Allocator,
 arena: std.mem.Allocator,
 config: Config,
 font: *z2d.font.Font,
-timezone: zeit.TimeZone,
 
 pub fn init(process: std.process.Init, config: Config) !Context {
     const arena = process.arena.allocator();
@@ -31,6 +29,5 @@ pub fn init(process: std.process.Init, config: Config) !Context {
         .arena = arena,
         .config = config,
         .font = font,
-        .timezone = try zeit.local(arena, process.io, .{}),
     };
 }

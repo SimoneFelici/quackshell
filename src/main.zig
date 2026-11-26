@@ -6,10 +6,11 @@ const wl = wayland.client.wl;
 const Bar = @import("Bar.zig");
 const Context = @import("Context.zig");
 const listeners = @import("listeners.zig");
-const time = @import("modules/time.zig");
+const modules = @import("modules.zig");
 
 pub fn main(init: std.process.Init) !void {
     const ctx = try Context.init(init, .{});
+    try modules.init(ctx);
 
     // Connect to compositor
     // null = "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
@@ -17,7 +18,7 @@ pub fn main(init: std.process.Init) !void {
     defer display.disconnect();
 
     const registry = try display.getRegistry();
-    var globals: listeners.Globals = .{ .arena = ctx.arena };
+    var globals: listeners.Globals = .{ .ctx = ctx };
     registry.setListener(*listeners.Globals, listeners.registryListener, &globals);
     if (display.roundtrip() != .SUCCESS) return error.RoundtripFailed;
 
@@ -47,7 +48,7 @@ pub fn main(init: std.process.Init) !void {
             else => return error.FlushFailed,
         }
 
-        const ret = std.posix.system.poll(&fds, fds.len, time.timeout(ctx));
+        const ret = std.posix.system.poll(&fds, fds.len, modules.timeout(ctx) orelse -1);
         if (std.posix.errno(ret) != .SUCCESS) {
             display.cancelRead();
             continue;
@@ -60,7 +61,7 @@ pub fn main(init: std.process.Init) !void {
         }
         if (display.dispatchPending() != .SUCCESS) return error.DispatchFailed;
 
-        if (ret == 0) {
+        if (ret == 0 or modules.changed()) {
             for (bars.items) |bar| bar.dirty = true;
         }
     }

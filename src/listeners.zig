@@ -4,8 +4,11 @@ const wayland = @import("wayland");
 const wl = wayland.client.wl;
 const zwlr = wayland.client.zwlr;
 
+const Context = @import("Context.zig");
+const modules = @import("modules.zig");
+
 pub const Globals = struct {
-    arena: std.mem.Allocator,
+    ctx: Context,
     compositor: ?*wl.Compositor = null,
     shm: ?*wl.Shm = null,
     layer_shell: ?*zwlr.LayerShellV1 = null,
@@ -24,7 +27,9 @@ pub fn registryListener(registry: *wl.Registry, event: wl.Registry.Event, global
                 globals.layer_shell = registry.bind(global.name, zwlr.LayerShellV1, @min(global.version, 5)) catch return;
             } else if (std.mem.orderZ(u8, global.interface, wl.Output.interface.name) == .eq) {
                 const output = registry.bind(global.name, wl.Output, @min(global.version, 4)) catch return;
-                globals.outputs.append(globals.arena, output) catch return;
+                globals.outputs.append(globals.ctx.arena, output) catch return;
+            } else {
+                modules.bind(globals.ctx, registry, global.name, global.interface, global.version);
             }
         },
         .global_remove => {},

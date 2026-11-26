@@ -62,7 +62,7 @@ pub fn update(bar: *Bar, ctx: Context, shm: *wl.Shm) !void {
     const w: f64 = @floatFromInt(bar.width);
     const h: f64 = @floatFromInt(bar.height);
     try draw.background(ctx, &ztx, w, h);
-    try draw.modules(ctx, &ztx, w, h);
+    try draw.zones(ctx, &ztx, w, h);
 
     bar.surface.attach(bar.buffer.?, 0, 0);
     bar.surface.damageBuffer(0, 0, @intCast(bar.width), @intCast(bar.height));
@@ -77,6 +77,7 @@ fn createBuffer(bar: *Bar, shm: *wl.Shm) !void {
     const len = stride * bar.height;
 
     const fd = try posix.memfd_create("quackshell", 0);
+    defer _ = posix.system.close(fd);
     if (posix.errno(posix.system.ftruncate(fd, len)) != .SUCCESS) return error.FtruncateFailed;
     const data = try posix.mmap(null, len, .{ .READ = true, .WRITE = true }, .{ .TYPE = .SHARED }, fd, 0);
 
