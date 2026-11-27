@@ -12,6 +12,7 @@ const draw = @import("draw.zig");
 
 const Bar = @This();
 
+output: *wl.Output,
 surface: *wl.Surface,
 layer_surface: *zwlr.LayerSurfaceV1,
 buffer: ?*wl.Buffer = null,
@@ -41,7 +42,7 @@ pub fn create(
     layer_surface.setMargin(0, ctx.config.gaps, 0, ctx.config.gaps);
     layer_surface.setExclusiveZone(@intCast(ctx.config.height));
 
-    bar.* = .{ .surface = surface, .layer_surface = layer_surface };
+    bar.* = .{ .output = output, .surface = surface, .layer_surface = layer_surface };
     layer_surface.setListener(*Bar, layerSurfaceListener, bar);
 
     surface.commit();
@@ -62,7 +63,7 @@ pub fn update(bar: *Bar, ctx: Context, shm: *wl.Shm) !void {
     const w: f64 = @floatFromInt(bar.width);
     const h: f64 = @floatFromInt(bar.height);
     try draw.background(ctx, &ztx, w, h);
-    draw.zones(ctx, &ztx, w, h);
+    draw.zones(ctx, &ztx, bar.output, w, h);
 
     bar.surface.attach(bar.buffer.?, 0, 0);
     bar.surface.damageBuffer(0, 0, @intCast(bar.width), @intCast(bar.height));

@@ -1,8 +1,12 @@
 const std = @import("std");
 
+const wayland = @import("wayland");
+const wl = wayland.client.wl;
+const z2d = @import("z2d");
 const zeit = @import("zeit");
 
 const Context = @import("../Context.zig");
+const text = @import("../draw.zig").text;
 
 var timezone: zeit.TimeZone = undefined;
 var buf: [64]u8 = undefined;
@@ -11,7 +15,11 @@ pub fn init(ctx: Context) !void {
     timezone = try zeit.local(ctx.arena, ctx.io, .{});
 }
 
-pub fn content(ctx: Context) ![]const u8 {
+pub fn draw(ctx: Context, ztx: ?*z2d.Context, _: *wl.Output, x: f64, y: f64) !f64 {
+    return text(ctx, ztx, try format(ctx), x, y);
+}
+
+fn format(ctx: Context) ![]const u8 {
     const now = zeit.instant(.{ .now = ctx.io }, &timezone);
     var writer = std.Io.Writer.fixed(&buf);
     try now.time().strftime(&writer, ctx.config.time.format);

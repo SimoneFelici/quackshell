@@ -3,8 +3,10 @@ const std = @import("std");
 const wayland = @import("wayland");
 const wl = wayland.client.wl;
 const zwlr = wayland.client.zwlr;
+const z2d = @import("z2d");
 
 const Context = @import("../Context.zig");
+const text = @import("../draw.zig").text;
 
 const State = struct {
     gpa: std.mem.Allocator = undefined,
@@ -22,8 +24,9 @@ const Toplevel = struct {
 
 var state: State = .{};
 
-pub fn content(_: Context) ![]const u8 {
-    return if (state.active) |toplevel| toplevel.title else "";
+pub fn draw(ctx: Context, ztx: ?*z2d.Context, _: *wl.Output, x: f64, y: f64) !f64 {
+    const title = if (state.active) |toplevel| toplevel.title else return 0;
+    return text(ctx, ztx, title, x, y);
 }
 
 pub fn changed() bool {

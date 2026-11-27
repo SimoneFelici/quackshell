@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) void {
     const wlr_protocols = b.dependency("wlr-protocols", .{});
 
     scanner.addSystemProtocol("stable/xdg-shell/xdg-shell.xml");
+    scanner.addSystemProtocol("staging/ext-workspace/ext-workspace-v1.xml");
     scanner.addCustomProtocol(wlr_protocols.path("unstable/wlr-layer-shell-unstable-v1.xml"));
     scanner.addCustomProtocol(wlr_protocols.path("unstable/wlr-foreign-toplevel-management-unstable-v1.xml"));
 
@@ -20,6 +21,7 @@ pub fn build(b: *std.Build) void {
     scanner.generate("xdg_wm_base", 3);
     scanner.generate("zwlr_layer_shell_v1", 5);
     scanner.generate("zwlr_foreign_toplevel_manager_v1", 3);
+    scanner.generate("ext_workspace_manager_v1", 1);
 
     const z2d = b.dependency("z2d", .{
         .target = target,

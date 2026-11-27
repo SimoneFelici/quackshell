@@ -2,6 +2,7 @@ const std = @import("std");
 
 const wayland = @import("wayland");
 const wl = wayland.client.wl;
+const z2d = @import("z2d");
 
 const Config = @import("Config.zig");
 const Context = @import("Context.zig");
@@ -10,6 +11,7 @@ const Context = @import("Context.zig");
 const list = struct {
     pub const time = @import("modules/time.zig");
     pub const window_title = @import("modules/window_title.zig");
+    pub const workspaces = @import("modules/workspaces.zig");
 };
 
 const all = std.enums.values(Config.Module);
@@ -30,9 +32,11 @@ pub fn init(ctx: Context) !void {
     }
 }
 
-pub fn content(ctx: Context, module: Config.Module) ![]const u8 {
+/// Draw module and return the width
+/// if NULL returns the width
+pub fn draw(ctx: Context, ztx: ?*z2d.Context, output: *wl.Output, module: Config.Module, x: f64, y: f64) !f64 {
     return switch (module) {
-        inline else => |m| @field(list, @tagName(m)).content(ctx),
+        inline else => |m| @field(list, @tagName(m)).draw(ctx, ztx, output, x, y),
     };
 }
 

@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const wayland = @import("wayland");
+const wl = wayland.client.wl;
 const z2d = @import("z2d");
 
 const Config = @import("Config.zig");
@@ -8,73 +10,64 @@ const modules = @import("modules.zig");
 
 pub fn background(ctx: Context, ztx: *z2d.Context, w: f64, h: f64) !void {
     ztx.setSourceToPixel(.{ .argb = ctx.config.background.multiply() });
-
-    const r: f64 = @min(@as(f64, @floatFromInt(ctx.config.rounding)), h / 2, w / 2);
-    const pi = std.math.pi;
-
-    try ztx.moveTo(r, 0);
-    try ztx.lineTo(w - r, 0);
-    try ztx.arc(w - r, r, r, -pi / 2.0, 0);
-    try ztx.lineTo(w, h - r);
-    try ztx.arc(w - r, h - r, r, 0, pi / 2.0);
-    try ztx.lineTo(r, h);
-    try ztx.arc(r, h - r, r, pi / 2.0, pi);
-    try ztx.lineTo(0, r);
-    try ztx.arc(r, r, r, pi, 3.0 * pi / 2.0);
-    try ztx.closePath();
-    try ztx.fill();
+    try rect(ztx, 0, 0, w, h, @floatFromInt(ctx.config.rounding));
 }
 
-pub fn zones(ctx: Context, ztx: *z2d.Context, w: f64, h: f64) void {
+pub fn zones(ctx: Context, ztx: *z2d.Context, output: *wl.Output, w: f64, h: f64) void {
     ztx.setSourceToPixel(.{ .argb = ctx.config.foreground.multiply() });
 
     const fe = ctx.font.extents(ctx.config.font_size);
     const y = (h - (@abs(fe.ascender) + @abs(fe.descender))) / 2;
     const pad = ctx.config.padding;
+    const center = ctx.config.center;
+    const right = ctx.config.right;
 
-    zone(ctx, ztx, ctx.config.left, pad, y);
-    zone(ctx, ztx, ctx.config.center, (w - zoneWidth(ctx, ctx.config.center)) / 2, y);
-    zone(ctx, ztx, ctx.config.right, w - pad - zoneWidth(ctx, ctx.config.right), y);
+    _ = zone(ctx, ztx, output, ctx.config.left, pad, y);
+    _ = zone(ctx, ztx, output, center, (w - zone(ctx, null, output, center, 0, y)) / 2, y);
+    _ = zone(ctx, ztx, output, right, w - pad - zone(ctx, null, output, right, 0, y), y);
 }
 
-fn zoneWidth(ctx: Context, zone_modules: []const Config.Module) f64 {
-    var total: f64 = 0;
-    for (zone_modules, 0..) |module, i| {
-        if (i > 0) total += ctx.config.padding;
-        total += moduleWidth(ctx, module);
-    }
-    return total;
-}
-
-/// Left or Center or Right
-fn zone(ctx: Context, ztx: *z2d.Context, zone_modules: []const Config.Module, start: f64, y: f64) void {
+/// Draw modules of a zone and return the width
+/// If NULL returns the width
+fn zone(ctx: Context, ztx: ?*z2d.Context, output: *wl.Output, zone_modules: []const Config.Module, start: f64, y: f64) f64 {
     var x = start;
-    for (zone_modules) |module| {
-        x += ctx.config.padding + moduleText(ctx, ztx, module, x, y);
+    for (zone_modules, 0..) |module, i| {
+        if (i > 0) x += ctx.config.padding;
+        x += modules.draw(ctx, ztx, output, module, x, y) catch |err| blk: {
+            std.log.err("module {t}: {t}", .{ module, err });
+            break :blk 0;
+        };
     }
+    return x - start;
 }
 
-fn moduleWidth(ctx: Context, module: Config.Module) f64 {
-    const str = modules.content(ctx, module) catch |err| return moduleError(module, err);
-    var shaped = z2d.text.shape(ctx.gpa, ctx.font, str, 0, 0, .{
-        .mode = .extents_only,
+/// Draws text and return the width
+/// If NULL returns the width
+pub fn text(ctx: Context, ztx: ?*z2d.Context, str: []const u8, x: f64, y: f64) !f64 {
+    var shaped = try z2d.text.shape(ctx.gpa, ctx.font, str, x, y, .{
+        .mode = if (ztx == null) .extents_only else .all,
         .size = ctx.config.font_size,
-    }) catch |err| return moduleError(module, err);
+    });
     defer shaped.deinit(ctx.gpa);
+    if (ztx) |z| try z2d.painter.fill(ctx.gpa, z.surface, &z.pattern, shaped.path().nodes.items, .default);
     return shaped.extents().advance;
 }
 
-fn moduleText(ctx: Context, ztx: *z2d.Context, module: Config.Module, x: f64, y: f64) f64 {
-    const str = modules.content(ctx, module) catch |err| return moduleError(module, err);
-    var shaped = z2d.text.shape(ctx.gpa, ctx.font, str, x, y, .{
-        .size = ctx.config.font_size,
-    }) catch |err| return moduleError(module, err);
-    defer shaped.deinit(ctx.gpa);
-    z2d.painter.fill(ctx.gpa, ztx.surface, &ztx.pattern, shaped.path().nodes.items, .default) catch |err| return moduleError(module, err);
-    return shaped.extents().advance;
-}
+/// Draw rectangle
+pub fn rect(ztx: *z2d.Context, x: f64, y: f64, w: f64, h: f64, radius: f64) !void {
+    const r = @min(radius, h / 2, w / 2);
+    const pi = std.math.pi;
 
-fn moduleError(module: Config.Module, err: anyerror) f64 {
-    std.log.err("module {t}: {t}", .{ module, err });
-    return 0;
+    ztx.resetPath();
+    try ztx.moveTo(x + r, y);
+    try ztx.lineTo(x + w - r, y);
+    try ztx.arc(x + w - r, y + r, r, -pi / 2.0, 0);
+    try ztx.lineTo(x + w, y + h - r);
+    try ztx.arc(x + w - r, y + h - r, r, 0, pi / 2.0);
+    try ztx.lineTo(x + r, y + h);
+    try ztx.arc(x + r, y + h - r, r, pi / 2.0, pi);
+    try ztx.lineTo(x, y + r);
+    try ztx.arc(x + r, y + r, r, pi, 3.0 * pi / 2.0);
+    try ztx.closePath();
+    try ztx.fill();
 }
