@@ -90,6 +90,15 @@ fn createBuffer(bar: *Bar, shm: *wl.Shm) !void {
     bar.pixels = std.mem.bytesAsSlice(z2d.pixel.ARGB, data);
 }
 
+fn destroyBuffer(bar: *Bar) void {
+    const buffer = bar.buffer orelse return;
+    buffer.destroy();
+    posix.munmap(@alignCast(std.mem.sliceAsBytes(bar.pixels)));
+    bar.buffer = null;
+    bar.pixels = &.{};
+    bar.busy = false;
+}
+
 /// When not in use sets busy to false
 fn bufferListener(_: *wl.Buffer, event: wl.Buffer.Event, bar: *Bar) void {
     switch (event) {
@@ -101,9 +110,11 @@ fn layerSurfaceListener(layer_surface: *zwlr.LayerSurfaceV1, event: zwlr.LayerSu
     switch (event) {
         .configure => |ev| {
             layer_surface.ackConfigure(ev.serial);
+            if (ev.width != bar.width or ev.height != bar.height) bar.destroyBuffer();
             bar.width = ev.width;
             bar.height = ev.height;
             bar.configured = true;
+            bar.dirty = true;
         },
         .closed => bar.closed = true,
     }
