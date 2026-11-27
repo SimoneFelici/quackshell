@@ -10,6 +10,8 @@ const State = struct {
     gpa: std.mem.Allocator = undefined,
     active: ?*Toplevel = null,
     changed: bool = false,
+
+    max_length: usize = 0,
 };
 
 const Toplevel = struct {
@@ -31,6 +33,7 @@ pub fn changed() bool {
 
 pub fn init(ctx: Context) !void {
     state.gpa = ctx.gpa;
+    state.max_length = ctx.config.window_title.max_length;
 }
 
 pub fn bind(_: Context, registry: *wl.Registry, name: u32, interface: [*:0]const u8, version: u32) void {
@@ -50,10 +53,20 @@ fn managerListener(_: *zwlr.ForeignToplevelManagerV1, event: zwlr.ForeignTopleve
     }
 }
 
+fn truncate(title: []const u8) ![]u8 {
+    var i: usize = 0;
+    var chars: usize = 0;
+    while (i < title.len) : (chars += 1) {
+        if (chars == state.max_length) return std.mem.concat(state.gpa, u8, &.{ title[0..i], "..." });
+        i += try std.unicode.utf8ByteSequenceLength(title[i]);
+    }
+    return state.gpa.dupe(u8, title);
+}
+
 fn handleListener(handle: *zwlr.ForeignToplevelHandleV1, event: zwlr.ForeignToplevelHandleV1.Event, toplevel: *Toplevel) void {
     switch (event) {
         .title => |ev| {
-            const title = state.gpa.dupe(u8, std.mem.span(ev.title)) catch return;
+            const title = truncate(std.mem.span(ev.title)) catch return;
             state.gpa.free(toplevel.title);
             toplevel.title = title;
         },

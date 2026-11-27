@@ -19,10 +19,15 @@ center: []const Module = &.{.time},
 right: []const Module = &.{},
 
 time: Time = .{},
+window_title: WindowTitle = .{},
 
 pub const Position = enum { top, bottom };
 pub const Module = enum { time, window_title };
 
 pub const Time = struct {
     format: []const u8 = "%d %b %Y %H:%M:%S",
+};
+
+pub const WindowTitle = struct {
+    max_length: usize = 60,
 };
