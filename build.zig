@@ -31,6 +31,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     }).module("zeit");
 
+    const known_folders = b.dependency("known_folders", .{
+        .target = target,
+        .optimize = optimize,
+    }).module("known-folders");
+
     // const goose = b.dependency("goose", .{
     //     .target = target,
     //     .optimize = optimize,
@@ -47,6 +52,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "wayland", .module = wayland },
                 .{ .name = "z2d", .module = z2d },
                 .{ .name = "zeit", .module = zeit },
+                .{ .name = "known_folders", .module = known_folders },
                 // .{ .name = "goose", .module = goose },
             },
         }),

@@ -9,7 +9,7 @@ const listeners = @import("listeners.zig");
 const modules = @import("modules.zig");
 
 pub fn main(init: std.process.Init) !void {
-    const ctx = try Context.init(init, .{});
+    const ctx = try Context.init(init);
     try modules.init(ctx);
 
     // Connect to compositor

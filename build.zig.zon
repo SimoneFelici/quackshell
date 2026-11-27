@@ -24,6 +24,10 @@
             .url = "git+https://github.com/rockorager/zeit?ref=main#da336369d4e05f9ea38d86c481f269bc2a435560",
             .hash = "zeit-0.10.0-5I6bkxS-AgCYLeTbtGwmBxzrIC5w1x3dP75Ob3FlH-SC",
         },
+        .known_folders = .{
+            .url = "git+https://github.com/ziglibs/known-folders#c7a8a1974ccf8b5b022ee7f4b13fd734cdd89ae1",
+            .hash = "known_folders-0.0.0-Fy-PJiLLAABzqCdF6GWFmE36oCwioOh6Uxj4FF1Neanr",
+        },
     },
     .paths = .{
         "build.zig",

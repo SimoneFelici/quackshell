@@ -9,7 +9,6 @@ gaps: i32 = 10,
 rounding: u32 = 3,
 
 font: []const u8 = "/usr/share/fonts/TTF/JetBrainsMonoNLNerdFont-Regular.ttf",
-// font: []const u8 = "/usr/share/fonts/noto/NotoColorEmoji.ttf",
 font_size: f64 = 16,
 foreground: z2d.pixel.ARGB = .{ .a = 255, .r = 255, .g = 255, .b = 255 },
 padding: f64 = 10,
