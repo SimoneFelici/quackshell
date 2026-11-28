@@ -6,9 +6,11 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // Wayland
-    const scanner = Scanner.create(b, .{});
-    const wayland = b.createModule(.{ .root_source_file = scanner.result });
+    const wayland_protocols = b.dependency("wayland_protocols", .{});
     const wlr_protocols = b.dependency("wlr-protocols", .{});
+
+    const scanner = Scanner.create(b, .{ .wayland_protocols = wayland_protocols.path("") });
+    const wayland = b.createModule(.{ .root_source_file = scanner.result });
 
     scanner.addSystemProtocol("stable/xdg-shell/xdg-shell.xml");
     scanner.addSystemProtocol("staging/ext-workspace/ext-workspace-v1.xml");

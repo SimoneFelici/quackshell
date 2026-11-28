@@ -28,6 +28,14 @@
             .url = "git+https://github.com/ziglibs/known-folders#c7a8a1974ccf8b5b022ee7f4b13fd734cdd89ae1",
             .hash = "known_folders-0.0.0-Fy-PJiLLAABzqCdF6GWFmE36oCwioOh6Uxj4FF1Neanr",
         },
+        .wayland_protocols = .{
+            .url = "git+https://gitlab.freedesktop.org/wayland/wayland-protocols#309f384d8811c424cee01fd91612c0c1b176ae36",
+            .hash = "N-V-__8AACE-EQDaBWoHd3RRq8r0ZEH23GCjOim3nDsmV7t2",
+        },
+        .wlr_protocols = .{
+            .url = "git+https://gitlab.freedesktop.org/wlroots/wlr-protocols#1106a4a1c57562ddd438c547da4c0d6dc150d624",
+            .hash = "N-V-__8AAMu4AQDm8emc7YzJVZYBrDgPferIyxOTVf3F4ypQ",
+        },
     },
     .paths = .{
         "build.zig",
