@@ -4,14 +4,15 @@ const wayland = @import("wayland");
 const wl = wayland.client.wl;
 const z2d = @import("z2d");
 
+const build_options = @import("build_options");
 const Config = @import("Config.zig");
 const Context = @import("Context.zig");
 
 // Modules list
 const list = struct {
-    pub const time = @import("modules/time.zig");
-    pub const window_title = @import("modules/window_title.zig");
-    pub const workspaces = @import("modules/workspaces.zig");
+    pub const time = if (build_options.time) @import("modules/time.zig") else struct {};
+    pub const window_title = if (build_options.window_title) @import("modules/window_title.zig") else struct {};
+    pub const workspaces = if (build_options.workspaces) @import("modules/workspaces.zig") else struct {};
 };
 
 const all = std.enums.values(Config.Module);
@@ -26,8 +27,12 @@ pub fn init(ctx: Context) !void {
 
     inline for (all) |m| {
         const module = @field(list, @tagName(m));
-        if (@hasDecl(module, "init")) {
-            if (used.contains(m)) try module.init(ctx);
+        if (used.contains(m)) {
+            if (!@hasDecl(module, "draw")) {
+                std.log.err("module {t} is not compiled", .{m});
+                return error.ModuleNotCompiled;
+            }
+            if (@hasDecl(module, "init")) try module.init(ctx);
         }
     }
 }
@@ -36,7 +41,11 @@ pub fn init(ctx: Context) !void {
 /// if NULL returns the width
 pub fn draw(ctx: Context, ztx: ?*z2d.Context, output: *wl.Output, module: Config.Module, x: f64, y: f64) !f64 {
     return switch (module) {
-        inline else => |m| @field(list, @tagName(m)).draw(ctx, ztx, output, x, y),
+        inline else => |m| {
+            const mod = @field(list, @tagName(m));
+            if (!@hasDecl(mod, "draw")) unreachable;
+            return mod.draw(ctx, ztx, output, x, y);
+        },
     };
 }
 

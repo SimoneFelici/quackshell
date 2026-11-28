@@ -19,6 +19,10 @@ const Group = struct {
     outputs: std.ArrayList(*wl.Output) = .empty,
 };
 
+// TODO: highlight workspaces that contain windows.
+// Waiting for ext-workspace-foreign-toplevel-v1, which adds workspace_enter/workspace_leave
+// https://gitlab.freedesktop.org/wayland/wayland-protocols/-/merge_requests/474
+
 const Workspace = struct {
     group: ?*Group = null,
     name: []u8 = &.{},

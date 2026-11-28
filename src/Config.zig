@@ -1,6 +1,7 @@
 const z2d = @import("z2d");
 
 const Config = @This();
+pub const Module = @import("Module.zig").Module;
 
 height: u32 = 30,
 background: z2d.pixel.ARGB = .{ .a = 255, .r = 0, .g = 0, .b = 255 },
@@ -22,7 +23,6 @@ window_title: WindowTitle = .{},
 workspaces: Workspaces = .{},
 
 pub const Position = enum { top, bottom };
-pub const Module = enum { time, window_title, workspaces };
 
 pub const Time = struct {
     format: []const u8 = "%d %b %Y %H:%M:%S",

@@ -10,7 +10,7 @@ const modules = @import("modules.zig");
 
 pub fn main(init: std.process.Init) !void {
     const ctx = try Context.init(init);
-    try modules.init(ctx);
+    modules.init(ctx) catch std.process.exit(1);
 
     // Connect to compositor
     // null = "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
